@@ -11,7 +11,7 @@ import lombok.Setter;
 @Builder
 public class AcquiringBankPaymentResponse implements Serializable {
 
-  private Boolean authorized;
+  private boolean authorized;
 
   @JsonProperty("authorization_code")
   private String authorizationCode;

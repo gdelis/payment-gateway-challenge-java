@@ -50,7 +50,7 @@ class AcquiringBankingClientTest {
     AcquiringBankPaymentResponse result = client.processPayment(request);
 
     assertThat(result).isNotNull();
-    assertThat(result.getAuthorized()).isTrue();
+    assertThat(result.isAuthorized()).isTrue();
     assertThat(result.getAuthorizationCode()).isEqualTo("AUTH-123");
 
     verify(restTemplate).postForEntity(eq(baseUrl + "/payments"), eq(request),
@@ -80,7 +80,7 @@ class AcquiringBankingClientTest {
     AcquiringBankPaymentResponse result = client.processPayment(request);
 
     assertThat(result).isNotNull();
-    assertThat(result.getAuthorized()).isFalse();
+    assertThat(result.isAuthorized()).isFalse();
     assertThat(result.getAuthorizationCode()).isEmpty();
 
     verify(restTemplate).postForEntity(eq(baseUrl + "/payments"), eq(request),
