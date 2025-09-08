@@ -1,29 +1,35 @@
 package com.checkout.payment.gateway.controller;
 
 
+import static org.hamcrest.Matchers.containsString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.checkout.payment.gateway.enums.PaymentStatus;
+import com.checkout.payment.gateway.exception.EventProcessingException;
+import com.checkout.payment.gateway.model.PaymentRequestDTO;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
-import com.checkout.payment.gateway.repository.PaymentsRepository;
+import com.checkout.payment.gateway.service.PaymentGatewayService;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class PaymentGatewayControllerTest {
+public class PaymentGatewayControllerTest {
 
   @Autowired
   private MockMvc mvc;
-  @Autowired
-  PaymentsRepository paymentsRepository;
+  @MockitoBean
+  private PaymentGatewayService paymentGatewayService;
 
   @Test
   void whenPaymentWithIdExistThenCorrectPaymentIsReturned() throws Exception {
@@ -36,7 +42,8 @@ class PaymentGatewayControllerTest {
     payment.setExpiryYear(2024);
     payment.setCardNumberLastFour(4321);
 
-    paymentsRepository.add(payment);
+    org.mockito.Mockito.when(paymentGatewayService.getPaymentById(payment.getId()))
+        .thenReturn(payment);
 
     mvc.perform(MockMvcRequestBuilders.get("/payment/" + payment.getId()))
         .andExpect(status().isOk())
@@ -50,8 +57,87 @@ class PaymentGatewayControllerTest {
 
   @Test
   void whenPaymentWithIdDoesNotExistThen404IsReturned() throws Exception {
-    mvc.perform(MockMvcRequestBuilders.get("/payment/" + UUID.randomUUID()))
+    UUID id = UUID.randomUUID();
+    org.mockito.Mockito.when(paymentGatewayService.getPaymentById(id))
+        .thenThrow(
+            new com.checkout.payment.gateway.exception.EventProcessingException("Invalid ID"));
+
+    mvc.perform(MockMvcRequestBuilders.get("/payment/" + id))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message").value("Page not found"));
   }
+
+  @Test
+  void whenValidPostPayment_thenCreatedAndBodyReturned() throws Exception {
+    String body = "{\n" +
+        "  \"card_number\": \"4111111111111234\",\n" +
+        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2030 },\n" +
+        "  \"currency\": \"USD\",\n" +
+        "  \"amount\": 1599,\n" +
+        "  \"cvv\": \"123\"\n" +
+        "}";
+
+    UUID authCode = UUID.randomUUID();
+    PostPaymentResponse response = new PostPaymentResponse();
+    response.setId(authCode);
+    response.setStatus(PaymentStatus.AUTHORIZED);
+    response.setCardNumberLastFour(1234);
+    response.setExpiryMonth(7);
+    response.setExpiryYear(2030);
+    response.setCurrency("USD");
+    response.setAmount(1599);
+
+    when(paymentGatewayService.processPayment(any(
+        com.checkout.payment.gateway.model.PaymentRequestDTO.class)))
+        .thenReturn(response);
+
+    mvc.perform(MockMvcRequestBuilders.post("/payment")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(authCode.toString()))
+        .andExpect(jsonPath("$.status").value("Authorized"))
+        .andExpect(jsonPath("$.cardNumberLastFour").value(1234))
+        .andExpect(jsonPath("$.expiryMonth").value(7))
+        .andExpect(jsonPath("$.expiryYear").value(2030))
+        .andExpect(jsonPath("$.currency").value("USD"))
+        .andExpect(jsonPath("$.amount").value(1599));
+  }
+
+  @Test
+  void whenInvalidPostPayment_cardNumberInvalid_thenBadRequestWithMessage() throws Exception {
+
+    String body = "{\n" +
+        "  \"card_number\": \"41111\",\n" +
+        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2030 },\n" +
+        "  \"currency\": \"USD\",\n" +
+        "  \"amount\": 1599,\n" +
+        "  \"cvv\": \"12a\"\n" +
+        "}";
+
+    mvc.perform(MockMvcRequestBuilders.post("/payment")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message", containsString("Invalid input data")));
+  }
+
+  @Test
+  void whenInvalidPostPayment_expirationDateInThePast_thenBadRequestWithMessage() throws Exception {
+
+    String body = "{\n" +
+        "  \"card_number\": \"41111\",\n" +
+        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2000 },\n" +
+        "  \"currency\": \"USD\",\n" +
+        "  \"amount\": 1599,\n" +
+        "  \"cvv\": \"12a\"\n" +
+        "}";
+
+    mvc.perform(MockMvcRequestBuilders.post("/payment")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message", containsString("Invalid input data")));
+  }
+
 }
