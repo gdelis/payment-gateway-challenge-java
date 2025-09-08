@@ -147,4 +147,10 @@ public class PaymentGatewayControllerTest {
         .andExpect(jsonPath("$.message", containsString("Invalid input data")));
   }
 
+
+  @Test
+  void whenGetWithInvalidUUID_thenBadRequest() throws Exception {
+    mvc.perform(MockMvcRequestBuilders.get("/payment/not-a-uuid"))
+        .andExpect(status().isBadRequest());
+  }
 }

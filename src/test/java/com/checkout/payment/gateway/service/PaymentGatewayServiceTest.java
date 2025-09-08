@@ -82,6 +82,30 @@ public class PaymentGatewayServiceTest {
   }
 
   @Test
+  void processPayment_shouldGenerateRandomId_whenAuthorizationCodeEmpty() {
+
+    PaymentRequestDTO paymentRequestDTO = PaymentRequestDTO.builder()
+        .cardNumber(VALID_CARD_NUMBER)
+        .expiryMonth(VALID_EXPIRY_MONTH)
+        .expiryYear(VALID_EXPIRY_YEAR)
+        .currency(USD_CURRENCY)
+        .amount(AMOUNT)
+        .cvv(CVV)
+        .build();
+
+    when(acquiringBankingClient.processPayment(any(AcquiringBankPaymentRequest.class)))
+        .thenReturn(AcquiringBankPaymentResponse.builder()
+            .authorized(true)
+            .authorizationCode("")
+            .build());
+
+    PostPaymentResponse response = underTest.processPayment(paymentRequestDTO);
+
+    assertThat(response).isNotNull();
+    assertThat(response.getId()).isNotNull();
+  }
+
+  @Test
   void processPayment_shouldSetDeclined_whenNotAuthorized() {
 
     PaymentRequestDTO paymentRequestDTO = PaymentRequestDTO.builder()
@@ -109,5 +133,24 @@ public class PaymentGatewayServiceTest {
     // Verify repository add was called with the same response object
     ArgumentCaptor<PostPaymentResponse> captor = ArgumentCaptor.forClass(PostPaymentResponse.class);
     verify(paymentsRepository, times(1)).add(captor.capture());
+  }
+
+  @Test
+  void processPayment_overloadedMethod_withPostPaymentRequest_returnsUUID() {
+    UUID result = underTest.processPayment(new com.checkout.payment.gateway.model.PostPaymentRequest());
+    assertThat(result).isNotNull();
+  }
+
+  @Test
+  void getPaymentById_shouldReturnFromRepository_whenPresent() {
+    UUID id = UUID.randomUUID();
+    PostPaymentResponse stored = new PostPaymentResponse();
+    stored.setId(id);
+
+    when(paymentsRepository.get(id)).thenReturn(java.util.Optional.of(stored));
+
+    PostPaymentResponse result = underTest.getPaymentById(id);
+
+    assertThat(result).isSameAs(stored);
   }
 }
