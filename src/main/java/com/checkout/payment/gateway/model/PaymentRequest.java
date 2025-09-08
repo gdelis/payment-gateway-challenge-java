@@ -1,5 +1,6 @@
 package com.checkout.payment.gateway.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -30,4 +31,23 @@ public class PaymentRequest {
   @Pattern(regexp = "\\d{3,4}", message = "CVV number must contain only numeric characters and has length of 3 or 4 digits")
   private String cvv;
 
+  // Jackson-friendly constructor to map flat JSON into this nested structure
+  @JsonCreator
+  public PaymentRequest(
+      @JsonProperty("card_number") String cardNumber,
+      @JsonProperty("expiry_month") Integer expiryMonth,
+      @JsonProperty("expiry_year") Integer expiryYear,
+      @JsonProperty("currency") Currency currency,
+      @JsonProperty("amount") BigInteger amount,
+      @JsonProperty("cvv") String cvv) {
+    this.cardNumber = cardNumber;
+    this.currency = currency;
+    this.amount = amount;
+    this.cvv = cvv;
+    if (expiryMonth != null && expiryYear != null) {
+      this.expiryDate = new CardExpirationDate(expiryMonth, expiryYear);
+    } else {
+      this.expiryDate = null;
+    }
+  }
 }

@@ -15,10 +15,14 @@ public class ExpiryDateValidator implements
       return true;
     }
 
-    YearMonth now = YearMonth.now();
-    YearMonth expiry = YearMonth.of(value.getExpiryYear(), value.getExpiryMonth());
-
-    return expiry.isAfter(now);
+    try {
+      YearMonth now = YearMonth.now();
+      YearMonth expiry = YearMonth.of(value.getExpiryYear(), value.getExpiryMonth());
+      return expiry.isAfter(now);
+    } catch (RuntimeException ex) {
+      // Any invalid month/year (e.g., 0) should be considered invalid rather than throwing
+      return false;
+    }
   }
 
 }

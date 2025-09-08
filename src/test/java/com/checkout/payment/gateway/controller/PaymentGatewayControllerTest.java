@@ -8,8 +8,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.checkout.payment.gateway.enums.PaymentStatus;
-import com.checkout.payment.gateway.exception.EventProcessingException;
-import com.checkout.payment.gateway.model.PaymentRequestDTO;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.service.PaymentGatewayService;
 import java.util.UUID;
@@ -69,13 +67,16 @@ public class PaymentGatewayControllerTest {
 
   @Test
   void whenValidPostPayment_thenCreatedAndBodyReturned() throws Exception {
-    String body = "{\n" +
-        "  \"card_number\": \"4111111111111234\",\n" +
-        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2030 },\n" +
-        "  \"currency\": \"USD\",\n" +
-        "  \"amount\": 1599,\n" +
-        "  \"cvv\": \"123\"\n" +
-        "}";
+    String body = """
+        {
+          "card_number": "4111111111111234",
+          "expiry_month": 7,
+          "expiry_year": 2030,
+          "currency": "USD",
+          "amount": 1599,
+          "cvv": "123"
+        }
+        """;
 
     UUID authCode = UUID.randomUUID();
     PostPaymentResponse response = new PostPaymentResponse();
@@ -105,15 +106,18 @@ public class PaymentGatewayControllerTest {
   }
 
   @Test
-  void whenInvalidPostPayment_cardNumberInvalid_thenBadRequestWithMessage() throws Exception {
+  void whenInvalidPostPayment_CVVInvalid_thenBadRequestWithMessage() throws Exception {
 
-    String body = "{\n" +
-        "  \"card_number\": \"41111\",\n" +
-        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2030 },\n" +
-        "  \"currency\": \"USD\",\n" +
-        "  \"amount\": 1599,\n" +
-        "  \"cvv\": \"12a\"\n" +
-        "}";
+    String body = """
+        {
+          "card_number": "4111111111111234",
+          "expiry_month": 7,
+          "expiry_year": 2030,
+          "currency": "USD",
+          "amount": 1599,
+          "cvv": "12a"
+        }
+        """;
 
     mvc.perform(MockMvcRequestBuilders.post("/payment")
             .contentType(MediaType.APPLICATION_JSON)
@@ -125,13 +129,16 @@ public class PaymentGatewayControllerTest {
   @Test
   void whenInvalidPostPayment_expirationDateInThePast_thenBadRequestWithMessage() throws Exception {
 
-    String body = "{\n" +
-        "  \"card_number\": \"41111\",\n" +
-        "  \"expiryDate\": { \"expiry_month\": 7, \"expiry_year\": 2000 },\n" +
-        "  \"currency\": \"USD\",\n" +
-        "  \"amount\": 1599,\n" +
-        "  \"cvv\": \"12a\"\n" +
-        "}";
+    String body = """
+        {
+          "card_number": "4111111111111234",
+          "expiry_month": 7,
+          "expiry_year": 2000,
+          "currency": "USD",
+          "amount": 1599,
+          "cvv": "123"
+        }
+        """;
 
     mvc.perform(MockMvcRequestBuilders.post("/payment")
             .contentType(MediaType.APPLICATION_JSON)

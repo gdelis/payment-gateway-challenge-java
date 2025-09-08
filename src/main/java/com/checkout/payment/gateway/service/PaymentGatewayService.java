@@ -27,12 +27,12 @@ public class PaymentGatewayService {
 
     this.paymentsRepository = paymentsRepository;
     this.acquiringBankingClient = acquiringBankingClient;
-
   }
 
   public PostPaymentResponse getPaymentById(UUID id) {
     LOG.debug("Requesting access to to payment with ID {}", id);
-    return paymentsRepository.get(id).orElseThrow(() -> new EventProcessingException("Invalid ID"));
+    return paymentsRepository.get(id)
+        .orElseThrow(() -> new EventProcessingException("Invalid ID"));
   }
 
   // Input class is not valid cause it accepts only the 4 last digits of the card number:
@@ -63,7 +63,9 @@ public class PaymentGatewayService {
     postPaymentResponse.setStatus(
         acquiringBankPaymentResponse.isAuthorized() ? PaymentStatus.AUTHORIZED
             : PaymentStatus.DECLINED);
-    postPaymentResponse.setId(UUID.fromString(acquiringBankPaymentResponse.getAuthorizationCode()));
+
+    postPaymentResponse.setId(
+        generatePaymentId(acquiringBankPaymentResponse.getAuthorizationCode()));
 
     String cardNumber = paymentRequestDTO.cardNumber();
 
@@ -80,5 +82,13 @@ public class PaymentGatewayService {
 
     return postPaymentResponse;
 
+  }
+
+  private UUID generatePaymentId(final String paymentId) {
+    if (paymentId != null && !paymentId.isEmpty()) {
+      return UUID.fromString(paymentId);
+    }
+
+    return UUID.randomUUID();
   }
 }

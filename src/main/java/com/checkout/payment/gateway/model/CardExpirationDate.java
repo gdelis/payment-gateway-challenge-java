@@ -15,6 +15,7 @@ import lombok.Setter;
 @ValidExpiryDate
 public class CardExpirationDate {
 
+  @JsonProperty("expiry_month")
   @Min(value = 1, message = "Expiry month must be greater than or equal to 1")
   @Max(value = 12, message = "Expiry month must be less than or equal to 12")
   private int expiryMonth;
